@@ -202,3 +202,26 @@ test("düzenlemede kategori değiştirilebilir, verilmezse korunur", () => {
   const kept = updateSubscription(list, "a", { name: "A", price: "12", day: "1" });
   assert.strictEqual(kept.list[0].category, "Müzik");
 });
+
+// Kart 6: Yıllık maliyet görünümü
+const { yearlyTotal } = require("./app.js");
+
+test("aylık toplam 150 TL ise yıllık 1800 TL olur", () => {
+  assert.strictEqual(yearlyTotal([{ price: 100 }, { price: 50 }]), 1800);
+});
+
+test("abonelik eklenip silindikçe yıllık tutar güncellenir", () => {
+  let list = [];
+  assert.strictEqual(yearlyTotal(list), 0);
+  list = addSubscription(list, { name: "A", price: "100", day: "1" }).list;
+  assert.strictEqual(yearlyTotal(list), 1200);
+  list = addSubscription(list, { name: "B", price: "50", day: "2" }).list;
+  assert.strictEqual(yearlyTotal(list), 1800);
+  list = removeSubscription(list, list[0].id);
+  assert.strictEqual(yearlyTotal(list), 600);
+});
+
+test("ondalıklı ücretlerde yıllık tutar kuruş hassasiyetinde yuvarlanır", () => {
+  assert.strictEqual(yearlyTotal([{ price: 9.99 }]), 119.88);
+  assert.strictEqual(yearlyTotal([{ price: 0.1 }, { price: 0.2 }]), 3.6);
+});

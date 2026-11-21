@@ -83,6 +83,11 @@ function monthlyTotal(list) {
   return list.reduce((sum, s) => sum + s.price, 0);
 }
 
+/** Yıllık tahmini maliyet: aylık toplam x 12 (kuruş hassasiyetinde yuvarlanır). */
+function yearlyTotal(list) {
+  return Math.round(monthlyTotal(list) * 12 * 100) / 100;
+}
+
 /** Verilen ay için yenilenme gününü ayın uzunluğuna sığdırır (31 -> Şubat'ta 28/29). */
 function clampDay(year, month, day) {
   const lastDay = new Date(year, month + 1, 0).getDate();
@@ -151,6 +156,7 @@ if (typeof document !== "undefined") {
   });
 
   const totalEl = document.getElementById("monthly-total");
+  const yearlyEl = document.getElementById("yearly-total");
   const upcomingEl = document.getElementById("upcoming-list");
 
   function emptyItem(text) {
@@ -209,6 +215,7 @@ if (typeof document !== "undefined") {
 
   function renderSummary() {
     totalEl.textContent = `${formatTL(monthlyTotal(subscriptions))} TL`;
+    yearlyEl.textContent = `${formatTL(yearlyTotal(subscriptions))} TL`;
     upcomingEl.replaceChildren();
     const upcoming = upcomingPayments(subscriptions, new Date());
     if (upcoming.length === 0) {
@@ -257,6 +264,6 @@ if (typeof module !== "undefined") {
   module.exports = {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
     monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
-    updateSubscription, filterByCategory, normalizeCategory, CATEGORIES,
+    updateSubscription, filterByCategory, normalizeCategory, CATEGORIES, yearlyTotal,
   };
 }
