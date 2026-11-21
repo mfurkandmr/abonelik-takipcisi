@@ -40,6 +40,44 @@ function addSubscription(list, { name, price, day }) {
   return { list: [...list, item], errors: [] };
 }
 
+/** Tutarı gösterim için biçimlendirir: tam sayıysa ondalıksız, değilse 2 haneli. */
+function formatTL(amount) {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
+
+/** Tüm aboneliklerin aylık toplam ücreti. Liste boşsa 0 döner. */
+function monthlyTotal(list) {
+  return list.reduce((sum, s) => sum + s.price, 0);
+}
+
+/** Verilen ay için yenilenme gününü ayın uzunluğuna sığdırır (31 -> Şubat'ta 28/29). */
+function clampDay(year, month, day) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return Math.min(day, lastDay);
+}
+
+/** Bir aboneliğin bugünden itibaren bir sonraki yenilenme tarihini ve kalan günü verir. */
+function nextRenewal(sub, today) {
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let date = new Date(start.getFullYear(), start.getMonth(), clampDay(start.getFullYear(), start.getMonth(), sub.day));
+  if (date < start) {
+    const m = start.getMonth() + 1;
+    const y = start.getFullYear() + Math.floor(m / 12);
+    const mm = m % 12;
+    date = new Date(y, mm, clampDay(y, mm, sub.day));
+  }
+  const daysLeft = Math.round((date - start) / 86400000);
+  return { date, daysLeft };
+}
+
+/** Önümüzdeki `withinDays` gün içinde yenilenen abonelikleri, en yakın olan önce gelecek şekilde döndürür. */
+function upcomingPayments(list, today, withinDays = 7) {
+  return list
+    .map((s) => ({ ...s, ...nextRenewal(s, today) }))
+    .filter((s) => s.daysLeft <= withinDays)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
 /* ---------- Tarayıcı arayüzü ---------- */
 if (typeof document !== "undefined") {
   let subscriptions = loadSubscriptions(localStorage);
@@ -48,13 +86,20 @@ if (typeof document !== "undefined") {
   const errorBox = document.getElementById("errors");
   const listEl = document.getElementById("sub-list");
 
-  function render() {
+  const totalEl = document.getElementById("monthly-total");
+  const upcomingEl = document.getElementById("upcoming-list");
+
+  function emptyItem(text) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = text;
+    return li;
+  }
+
+  function renderList() {
     listEl.replaceChildren();
     if (subscriptions.length === 0) {
-      const li = document.createElement("li");
-      li.className = "empty";
-      li.textContent = "Henüz abonelik eklenmedi.";
-      listEl.appendChild(li);
+      listEl.appendChild(emptyItem("Henüz abonelik eklenmedi."));
       return;
     }
     for (const s of subscriptions) {
@@ -62,6 +107,27 @@ if (typeof document !== "undefined") {
       li.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü)`;
       listEl.appendChild(li);
     }
+  }
+
+  function renderSummary() {
+    totalEl.textContent = `${formatTL(monthlyTotal(subscriptions))} TL`;
+    upcomingEl.replaceChildren();
+    const upcoming = upcomingPayments(subscriptions, new Date());
+    if (upcoming.length === 0) {
+      upcomingEl.appendChild(emptyItem("Önümüzdeki 7 gün içinde yenilenen abonelik yok."));
+      return;
+    }
+    for (const s of upcoming) {
+      const li = document.createElement("li");
+      const when = s.daysLeft === 0 ? "bugün" : `${s.daysLeft} gün sonra`;
+      li.textContent = `${s.name} - ${s.price} TL (${when})`;
+      upcomingEl.appendChild(li);
+    }
+  }
+
+  function render() {
+    renderList();
+    renderSummary();
   }
 
   form.addEventListener("submit", (e) => {
@@ -87,5 +153,8 @@ if (typeof document !== "undefined") {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions };
+  module.exports = {
+    validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
+    monthlyTotal, nextRenewal, upcomingPayments, formatTL,
+  };
 }
