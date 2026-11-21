@@ -225,3 +225,22 @@ test("ondalıklı ücretlerde yıllık tutar kuruş hassasiyetinde yuvarlanır",
   assert.strictEqual(yearlyTotal([{ price: 9.99 }]), 119.88);
   assert.strictEqual(yearlyTotal([{ price: 0.1 }, { price: 0.2 }]), 3.6);
 });
+
+// Arayüz: ay takvimi şeridi
+const { paymentsByDay } = require("./app.js");
+
+test("ödemeler bu ayın günlerine göre gruplanır", () => {
+  const today = new Date(2026, 4, 10);
+  const list = [
+    { name: "A", day: 5 }, { name: "B", day: 5 }, { name: "C", day: 20 },
+  ];
+  const by = paymentsByDay(list, today);
+  assert.deepStrictEqual(by[5].map((s) => s.name), ["A", "B"]);
+  assert.deepStrictEqual(by[20].map((s) => s.name), ["C"]);
+  assert.strictEqual(by[6], undefined);
+});
+
+test("31. gün kısa ayda ayın son gününe düşer", () => {
+  const by = paymentsByDay([{ name: "A", day: 31 }], new Date(2026, 1, 10)); // Şubat 2026
+  assert.deepStrictEqual(Object.keys(by), ["28"]);
+});

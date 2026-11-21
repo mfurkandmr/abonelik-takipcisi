@@ -54,17 +54,18 @@ node --test
 4. Adı boş bırakıp ya da negatif ücret girip **Ekle**'ye basın: hata mesajı çıkar, kayıt eklenmez.
 
 ### Özellik 2: Aylık toplam ve yaklaşan ödemeler ([#2](https://github.com/mfurkandmr/abonelik-takipcisi/issues/2))
-1. İki abonelik ekleyin: ücretleri `100` ve `50` olsun. "Özet" bölümünde **Aylık toplam: 150 TL** görünür.
+1. İki abonelik ekleyin: ücretleri `100` ve `50` olsun. Sayfanın üstündeki mavi alanda **150 TL her ay** görünür.
 2. Yenilenme günü bugünden itibaren 7 gün içinde olan bir abonelik ekleyin (örn. bugün ayın 21'i ise `23`).
-   "Yaklaşan ödemeler" listesinde "2 gün sonra" olarak çıkar.
-3. Yenilenme günü 7 günden uzak olan abonelik bu listede görünmez.
+   "Yaklaşan ödemeler" listesinde "2 gün sonra" olarak çıkar, ay takviminde de o gün dolu görünür.
+3. Yenilenme günü 7 günden uzak olan abonelik bu listede görünmez (takvimde yine işaretlidir).
 4. Hiç abonelik yokken toplam `0 TL` görünür.
 
 ### Ek özellikler (#3-#6)
 - **Silme:** satırdaki **Sil**'e basın, toplam otomatik güncellenir.
 - **Düzenleme:** **Düzenle**'ye basın, form dolar, değiştirip **Kaydet**'e basın.
-- **Kategori filtresi:** forma kategori seçin, "Aboneliklerim" üstündeki filtreyle listeyi süzün.
-- **Yıllık maliyet:** "Özet" bölümünde aylık toplamın 12 katı gösterilir (150 TL ise 1800 TL).
+- **Kategori filtresi:** forma kategori seçin, "Aboneliklerim" üstündeki kategori düğmeleriyle listeyi süzün.
+- **Yıllık maliyet:** mavi alanda "Yılda ... eder" olarak aylık toplamın 12 katı gösterilir (150 TL ise 1800 TL).
+- **Ay takvimi:** ödeme günleri mevcut ayın takviminde mercan renkle dolu görünür, bugün çerçevelidir.
 
 ## Proje yapısı
 | Dosya | Açıklama |

@@ -116,19 +116,55 @@ function upcomingPayments(list, today, withinDays = 7) {
     .sort((a, b) => a.daysLeft - b.daysLeft);
 }
 
+/** Bu ayın günlerine düşen ödemeler: { gün: [abonelik, ...] }. 29-31. gün kısa aylarda ayın son gününe çekilir. */
+function paymentsByDay(list, today) {
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const byDay = {};
+  for (const s of list) {
+    const d = clampDay(y, m, s.day);
+    (byDay[d] = byDay[d] || []).push(s);
+  }
+  return byDay;
+}
+
 /* ---------- Tarayıcı arayüzü ---------- */
 if (typeof document !== "undefined") {
   let subscriptions = loadSubscriptions(localStorage);
-
-  const form = document.getElementById("sub-form");
-  const errorBox = document.getElementById("errors");
-  const listEl = document.getElementById("sub-list");
-
-  const submitBtn = document.getElementById("submit-btn");
-  const cancelBtn = document.getElementById("cancel-edit");
-  const formTitle = document.getElementById("add-title");
   let editingId = null;
+  let activeFilter = "Tümü";
+  let flashId = null;
 
+  const money = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const monthFmt = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" });
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const $ = (id) => document.getElementById(id);
+  const form = $("sub-form");
+  const errorBox = $("errors");
+  const listEl = $("sub-list");
+  const submitBtn = $("submit-btn");
+  const cancelBtn = $("cancel-edit");
+  const formTitle = $("add-title");
+  const totalEl = $("monthly-total");
+  const yearlyEl = $("yearly-total");
+  const upcomingEl = $("upcoming-list");
+  const stripEl = $("month-strip");
+  const monthNameEl = $("month-name");
+  const chipsEl = $("category-filter");
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function when(daysLeft) {
+    return daysLeft === 0 ? "bugün" : daysLeft === 1 ? "yarın" : `${daysLeft} gün sonra`;
+  }
+
+  /* --- Form: ekleme ve düzenleme --- */
   function startEdit(s) {
     editingId = s.id;
     form.elements.name.value = s.name;
@@ -139,7 +175,8 @@ if (typeof document !== "undefined") {
     cancelBtn.hidden = false;
     formTitle.textContent = "Aboneliği düzenle";
     errorBox.textContent = "";
-    form.elements.name.focus();
+    form.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+    form.elements.name.focus({ preventScroll: true });
   }
 
   function stopEdit() {
@@ -154,86 +191,6 @@ if (typeof document !== "undefined") {
     errorBox.textContent = "";
     stopEdit();
   });
-
-  const totalEl = document.getElementById("monthly-total");
-  const yearlyEl = document.getElementById("yearly-total");
-  const upcomingEl = document.getElementById("upcoming-list");
-
-  function emptyItem(text) {
-    const li = document.createElement("li");
-    li.className = "empty";
-    li.textContent = text;
-    return li;
-  }
-
-  const filterEl = document.getElementById("category-filter");
-  let activeFilter = "Tümü";
-  filterEl.addEventListener("change", () => {
-    activeFilter = filterEl.value;
-    renderList();
-  });
-
-  function renderList() {
-    listEl.replaceChildren();
-    if (subscriptions.length === 0) {
-      listEl.appendChild(emptyItem("Henüz abonelik eklenmedi."));
-      return;
-    }
-    const visible = filterByCategory(subscriptions, activeFilter);
-    if (visible.length === 0) {
-      listEl.appendChild(emptyItem(`"${activeFilter}" kategorisinde abonelik yok.`));
-      return;
-    }
-    for (const s of visible) {
-      const li = document.createElement("li");
-      const text = document.createElement("span");
-      text.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü) · ${normalizeCategory(s.category)}`;
-      const edit = document.createElement("button");
-      edit.type = "button";
-      edit.className = "secondary";
-      edit.textContent = "Düzenle";
-      edit.setAttribute("aria-label", `${s.name} aboneliğini düzenle`);
-      edit.addEventListener("click", () => startEdit(s));
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "danger";
-      del.textContent = "Sil";
-      del.setAttribute("aria-label", `${s.name} aboneliğini sil`);
-      del.addEventListener("click", () => {
-        if (editingId === s.id) stopEdit();
-        subscriptions = removeSubscription(subscriptions, s.id);
-        saveSubscriptions(localStorage, subscriptions);
-        render();
-      });
-      const actions = document.createElement("span");
-      actions.className = "actions";
-      actions.append(edit, del);
-      li.append(text, actions);
-      listEl.appendChild(li);
-    }
-  }
-
-  function renderSummary() {
-    totalEl.textContent = `${formatTL(monthlyTotal(subscriptions))} TL`;
-    yearlyEl.textContent = `${formatTL(yearlyTotal(subscriptions))} TL`;
-    upcomingEl.replaceChildren();
-    const upcoming = upcomingPayments(subscriptions, new Date());
-    if (upcoming.length === 0) {
-      upcomingEl.appendChild(emptyItem("Önümüzdeki 7 gün içinde yenilenen abonelik yok."));
-      return;
-    }
-    for (const s of upcoming) {
-      const li = document.createElement("li");
-      const when = s.daysLeft === 0 ? "bugün" : `${s.daysLeft} gün sonra`;
-      li.textContent = `${s.name} - ${s.price} TL (${when})`;
-      upcomingEl.appendChild(li);
-    }
-  }
-
-  function render() {
-    renderList();
-    renderSummary();
-  }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -251,12 +208,137 @@ if (typeof document !== "undefined") {
       return;
     }
     errorBox.textContent = "";
+    flashId = editingId || result.list[result.list.length - 1].id;
     subscriptions = result.list;
     saveSubscriptions(localStorage, subscriptions);
     stopEdit();
     render();
   });
 
+  /* --- Kategori filtresi --- */
+  function renderChips() {
+    chipsEl.replaceChildren();
+    for (const name of ["Tümü", ...CATEGORIES]) {
+      const chip = el("button", "chip", name);
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", String(name === activeFilter));
+      chip.addEventListener("click", () => {
+        activeFilter = name;
+        renderChips();
+        renderList();
+      });
+      chipsEl.appendChild(chip);
+    }
+  }
+
+  /* --- Liste --- */
+  function renderList() {
+    listEl.replaceChildren();
+    if (subscriptions.length === 0) {
+      listEl.appendChild(el("li", "empty", "Henüz abonelik yok. Formdan ilk aboneliğini ekle."));
+      return;
+    }
+    const visible = filterByCategory(subscriptions, activeFilter);
+    if (visible.length === 0) {
+      listEl.appendChild(el("li", "empty", `"${activeFilter}" kategorisinde abonelik yok.`));
+      return;
+    }
+    const today = new Date();
+    for (const s of visible) {
+      const li = el("li", "row");
+      if (s.id === flashId) li.classList.add("flash");
+
+      const meta = el("p", "meta", `Her ayın ${s.day}. günü · ${normalizeCategory(s.category)}`);
+      const { daysLeft } = nextRenewal(s, today);
+      if (daysLeft <= 7) meta.append(" ", el("span", "pill", when(daysLeft)));
+
+      const edit = el("button", "link", "Düzenle");
+      edit.type = "button";
+      edit.setAttribute("aria-label", `${s.name} aboneliğini düzenle`);
+      edit.addEventListener("click", () => startEdit(s));
+
+      const del = el("button", "link danger", "Sil");
+      del.type = "button";
+      del.setAttribute("aria-label", `${s.name} aboneliğini sil`);
+      del.addEventListener("click", () => {
+        if (editingId === s.id) stopEdit();
+        subscriptions = removeSubscription(subscriptions, s.id);
+        saveSubscriptions(localStorage, subscriptions);
+        render();
+      });
+
+      const actions = el("div", "actions");
+      actions.append(edit, del);
+      li.append(
+        el("h3", "name", s.name),
+        el("p", "price", `${money.format(s.price)} TL`),
+        meta,
+        actions
+      );
+      listEl.appendChild(li);
+    }
+    flashId = null;
+  }
+
+  /* --- Özet: toplamlar, takvim şeridi, yaklaşanlar --- */
+  let introPlayed = false;
+
+  function renderStrip(now) {
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const byDay = paymentsByDay(subscriptions, now);
+    monthNameEl.textContent = monthFmt.format(now);
+    stripEl.style.setProperty("--days", days);
+    stripEl.replaceChildren();
+    for (let d = 1; d <= days; d++) {
+      const cell = el("div", "day");
+      cell.style.setProperty("--i", d);
+      cell.append(el("span", "", String(d)));
+      if (d === now.getDate()) cell.classList.add("today");
+      if (d < now.getDate()) cell.classList.add("past");
+      const pays = byDay[d];
+      if (pays) {
+        cell.classList.add("has");
+        cell.title = pays.map((p) => `${p.name} ${money.format(p.price)} TL`).join(", ");
+        if (pays.length > 1) cell.append(el("b", "", `×${pays.length}`));
+      }
+      stripEl.appendChild(cell);
+    }
+    if (!introPlayed && !reduceMotion) {
+      introPlayed = true;
+      stripEl.classList.add("intro");
+      setTimeout(() => stripEl.classList.remove("intro"), 1500);
+    }
+  }
+
+  function renderSummary() {
+    const now = new Date();
+    totalEl.textContent = `${money.format(monthlyTotal(subscriptions))} TL`;
+    yearlyEl.textContent = `${money.format(yearlyTotal(subscriptions))} TL`;
+    renderStrip(now);
+
+    upcomingEl.replaceChildren();
+    const upcoming = upcomingPayments(subscriptions, now);
+    if (upcoming.length === 0) {
+      upcomingEl.appendChild(el("li", "empty", "Önümüzdeki 7 gün içinde ödeme yok."));
+      return;
+    }
+    for (const s of upcoming) {
+      const li = el("li", "soon-item");
+      li.append(
+        el("strong", "", s.name),
+        el("span", "", `${money.format(s.price)} TL`),
+        el("span", "when", when(s.daysLeft))
+      );
+      upcomingEl.appendChild(li);
+    }
+  }
+
+  function render() {
+    renderList();
+    renderSummary();
+  }
+
+  renderChips();
   render();
 }
 
@@ -265,5 +347,6 @@ if (typeof module !== "undefined") {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
     monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
     updateSubscription, filterByCategory, normalizeCategory, CATEGORIES, yearlyTotal,
+    paymentsByDay,
   };
 }
