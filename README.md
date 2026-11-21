@@ -9,7 +9,7 @@ yerde toplar, aylık toplam maliyeti hesaplar ve yaklaşan ödemeleri gösterir.
 Hedef kullanıcı: birden fazla dijital aboneliği olan öğrenciler ve genç çalışanlar.
 
 ## İş panosu
-GitHub Projects panosu (Todo / In Progress / Done sütunları):
+GitHub Projects panosu (Yapılacak / Devam Ediyor / Tamamlandı sütunları):
 **https://github.com/users/mfurkandmr/projects/1**
 
 Her kartta kısa açıklama ve kabul kriteri var. Tamamlanan kartlarda ilgili commit
