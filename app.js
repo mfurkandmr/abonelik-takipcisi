@@ -128,9 +128,24 @@ function paymentsByDay(list, today) {
   return byDay;
 }
 
+/** İlk açılışta gösterilen örnek abonelikler. Yenilenme günleri bugüne göre seçilir, böylece "yaklaşan ödemeler" boş kalmaz. */
+function demoSubscriptions(today) {
+  const dayAfter = (n) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + n).getDate();
+  return [
+    { id: "demo-spotify", name: "Spotify", price: 110, day: dayAfter(2), category: "Müzik" },
+    { id: "demo-netflix", name: "Netflix", price: 149.99, day: dayAfter(5), category: "Eğlence" },
+    { id: "demo-icloud", name: "iCloud 200 GB", price: 39.99, day: dayAfter(12), category: "Yazılım" },
+  ];
+}
+
 /* ---------- Tarayıcı arayüzü ---------- */
 if (typeof document !== "undefined") {
   let subscriptions = loadSubscriptions(localStorage);
+  // Hiç kayıt yapılmamışsa (anahtar yoksa) örnekleri yükle. Kullanıcı hepsini silerse "[]" kaydedilir, örnekler geri gelmez.
+  if (localStorage.getItem(STORAGE_KEY) === null) {
+    subscriptions = demoSubscriptions(new Date());
+    saveSubscriptions(localStorage, subscriptions);
+  }
   let editingId = null;
   let activeFilter = "Tümü";
   let flashId = null;
@@ -347,6 +362,6 @@ if (typeof module !== "undefined") {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
     monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
     updateSubscription, filterByCategory, normalizeCategory, CATEGORIES, yearlyTotal,
-    paymentsByDay,
+    paymentsByDay, demoSubscriptions,
   };
 }

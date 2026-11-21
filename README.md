@@ -40,6 +40,11 @@ Kurulum gerekmez, uygulama düz HTML/CSS/JavaScript'tir. Veriler tarayıcının
    Alternatif olarak yerel sunucu ile: `python -m http.server 8000` komutunu çalıştırıp
    http://localhost:8000 adresine gidin.
 
+İlk açılışta uygulamayı denemek için 3 örnek abonelik hazır gelir (Spotify 110 TL,
+Netflix, iCloud). Yenilenme günleri bugüne göre ayarlandığı için "Yaklaşan ödemeler"
+boş görünmez. İstediğiniz gibi silebilir veya düzenleyebilirsiniz; hepsini silerseniz
+örnekler geri gelmez. Başa dönmek için tarayıcının site verisini temizleyin.
+
 Testleri çalıştırmak için (Node.js 20 veya üzeri gerekir):
 ```
 node --test

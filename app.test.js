@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { addSubscription, validateSubscription, loadSubscriptions, saveSubscriptions } = require("./app.js");
+const { addSubscription, validateSubscription, loadSubscriptions, saveSubscriptions, CATEGORIES } = require("./app.js");
 
 function fakeStorage() {
   const data = {};
@@ -243,4 +243,30 @@ test("ödemeler bu ayın günlerine göre gruplanır", () => {
 test("31. gün kısa ayda ayın son gününe düşer", () => {
   const by = paymentsByDay([{ name: "A", day: 31 }], new Date(2026, 1, 10)); // Şubat 2026
   assert.deepStrictEqual(Object.keys(by), ["28"]);
+});
+
+// Demo veriler
+const { demoSubscriptions } = require("./app.js");
+
+test("demo abonelikler geçerlidir ve Spotify 110 TL içerir", () => {
+  const demo = demoSubscriptions(new Date(2026, 4, 10));
+  assert.strictEqual(demo.length, 3);
+  for (const s of demo) {
+    assert.deepStrictEqual(validateSubscription(s), []);
+    assert.ok(CATEGORIES.includes(s.category));
+  }
+  assert.ok(demo.some((s) => s.name === "Spotify" && s.price === 110));
+});
+
+test("demo yenilenme günleri bugüne göre belirlenir, ay sonunu aşınca taşar", () => {
+  const may = demoSubscriptions(new Date(2026, 4, 10)); // 10 Mayıs
+  assert.deepStrictEqual(may.map((s) => s.day), [12, 15, 22]);
+  const end = demoSubscriptions(new Date(2026, 4, 30)); // 30 Mayıs -> +2 = 1 Haziran
+  assert.strictEqual(end[0].day, 1);
+});
+
+test("demo ilk 7 günde en az bir yaklaşan ödeme üretir", () => {
+  const today = new Date(2026, 10, 21);
+  const up = upcomingPayments(demoSubscriptions(today), today);
+  assert.ok(up.length >= 2);
 });
