@@ -127,3 +127,34 @@ test("silme kalıcıdır: kaydedilip yeniden okununca silinen geri gelmez", () =
   saveSubscriptions(storage, removeSubscription(list, "a"));
   assert.deepStrictEqual(loadSubscriptions(storage).map((s) => s.id), ["b"]);
 });
+
+// Kart 4: Abonelik düzenleme
+const { updateSubscription } = require("./app.js");
+
+test("düzenleme listedeki bilgiyi günceller, kimlik ve diğer kayıtlar korunur", () => {
+  const list = [{ id: "a", name: "A", price: 10, day: 1 }, { id: "b", name: "B", price: 20, day: 2 }];
+  const { list: out, errors } = updateSubscription(list, "a", { name: "A+", price: "99.5", day: "20" });
+  assert.deepStrictEqual(errors, []);
+  assert.deepStrictEqual(out[0], { id: "a", name: "A+", price: 99.5, day: 20 });
+  assert.deepStrictEqual(out[1], list[1]);
+});
+
+test("düzenleme sonrası toplam yeni ücrete göre hesaplanır", () => {
+  const list = [{ id: "a", name: "A", price: 100, day: 1 }, { id: "b", name: "B", price: 50, day: 2 }];
+  const { list: out } = updateSubscription(list, "a", { name: "A", price: "120", day: "1" });
+  assert.strictEqual(monthlyTotal(out), 170);
+});
+
+test("geçersiz düzenleme hata verir ve liste değişmez", () => {
+  const list = [{ id: "a", name: "A", price: 10, day: 1 }];
+  const { list: out, errors } = updateSubscription(list, "a", { name: "", price: "-1", day: "40" });
+  assert.ok(errors.length >= 3);
+  assert.deepStrictEqual(out, list);
+});
+
+test("olmayan kimlik düzenlenmek istenirse hata verilir", () => {
+  const list = [{ id: "a", name: "A", price: 10, day: 1 }];
+  const { list: out, errors } = updateSubscription(list, "yok", { name: "X", price: "5", day: "5" });
+  assert.strictEqual(errors.length, 1);
+  assert.deepStrictEqual(out, list);
+});

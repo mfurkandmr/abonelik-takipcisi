@@ -40,6 +40,17 @@ function addSubscription(list, { name, price, day }) {
   return { list: [...list, item], errors: [] };
 }
 
+/** Mevcut aboneliği günceller. Geçersiz girdide ya da bilinmeyen kimlikte liste değişmez. */
+function updateSubscription(list, id, { name, price, day }) {
+  const errors = validateSubscription({ name, price, day });
+  if (errors.length) return { list, errors };
+  if (!list.some((s) => s.id === id)) return { list, errors: ["Düzenlenecek abonelik bulunamadı."] };
+  const updated = list.map((s) =>
+    s.id === id ? { ...s, name: String(name).trim(), price: Number(price), day: Number(day) } : s
+  );
+  return { list: updated, errors: [] };
+}
+
 /** Verilen kimlikteki aboneliği listeden çıkarır. Bulunamazsa liste değişmez. */
 function removeSubscription(list, id) {
   return list.filter((s) => s.id !== id);
@@ -91,6 +102,36 @@ if (typeof document !== "undefined") {
   const errorBox = document.getElementById("errors");
   const listEl = document.getElementById("sub-list");
 
+  const submitBtn = document.getElementById("submit-btn");
+  const cancelBtn = document.getElementById("cancel-edit");
+  const formTitle = document.getElementById("add-title");
+  let editingId = null;
+
+  function startEdit(s) {
+    editingId = s.id;
+    form.elements.name.value = s.name;
+    form.elements.price.value = s.price;
+    form.elements.day.value = s.day;
+    submitBtn.textContent = "Kaydet";
+    cancelBtn.hidden = false;
+    formTitle.textContent = "Aboneliği düzenle";
+    errorBox.textContent = "";
+    form.elements.name.focus();
+  }
+
+  function stopEdit() {
+    editingId = null;
+    form.reset();
+    submitBtn.textContent = "Ekle";
+    cancelBtn.hidden = true;
+    formTitle.textContent = "Abonelik ekle";
+  }
+
+  cancelBtn.addEventListener("click", () => {
+    errorBox.textContent = "";
+    stopEdit();
+  });
+
   const totalEl = document.getElementById("monthly-total");
   const upcomingEl = document.getElementById("upcoming-list");
 
@@ -111,17 +152,27 @@ if (typeof document !== "undefined") {
       const li = document.createElement("li");
       const text = document.createElement("span");
       text.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü)`;
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "secondary";
+      edit.textContent = "Düzenle";
+      edit.setAttribute("aria-label", `${s.name} aboneliğini düzenle`);
+      edit.addEventListener("click", () => startEdit(s));
       const del = document.createElement("button");
       del.type = "button";
       del.className = "danger";
       del.textContent = "Sil";
       del.setAttribute("aria-label", `${s.name} aboneliğini sil`);
       del.addEventListener("click", () => {
+        if (editingId === s.id) stopEdit();
         subscriptions = removeSubscription(subscriptions, s.id);
         saveSubscriptions(localStorage, subscriptions);
         render();
       });
-      li.append(text, del);
+      const actions = document.createElement("span");
+      actions.className = "actions";
+      actions.append(edit, del);
+      li.append(text, actions);
       listEl.appendChild(li);
     }
   }
@@ -154,7 +205,9 @@ if (typeof document !== "undefined") {
       price: form.elements.price.value,
       day: form.elements.day.value,
     };
-    const result = addSubscription(subscriptions, data);
+    const result = editingId
+      ? updateSubscription(subscriptions, editingId, data)
+      : addSubscription(subscriptions, data);
     if (result.errors.length) {
       errorBox.textContent = result.errors.join(" ");
       return;
@@ -162,7 +215,7 @@ if (typeof document !== "undefined") {
     errorBox.textContent = "";
     subscriptions = result.list;
     saveSubscriptions(localStorage, subscriptions);
-    form.reset();
+    stopEdit();
     render();
   });
 
@@ -173,5 +226,6 @@ if (typeof module !== "undefined") {
   module.exports = {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
     monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
+    updateSubscription,
   };
 }
