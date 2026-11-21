@@ -158,3 +158,47 @@ test("olmayan kimlik düzenlenmek istenirse hata verilir", () => {
   assert.strictEqual(errors.length, 1);
   assert.deepStrictEqual(out, list);
 });
+
+// Kart 5: Kategoriye göre filtreleme
+const { filterByCategory, normalizeCategory } = require("./app.js");
+
+const sample = [
+  { id: "1", name: "Netflix", price: 100, day: 1, category: "Eğlence" },
+  { id: "2", name: "Spotify", price: 50, day: 2, category: "Müzik" },
+  { id: "3", name: "YouTube Premium", price: 60, day: 3, category: "Eğlence" },
+  { id: "4", name: "Eski kayıt", price: 10, day: 4 }, // kategorisiz (eski sürümden)
+];
+
+test("kategori seçilince yalnızca o kategorideki abonelikler listelenir", () => {
+  const names = filterByCategory(sample, "Eğlence").map((s) => s.name);
+  assert.deepStrictEqual(names, ["Netflix", "YouTube Premium"]);
+});
+
+test("'Tümü' seçilince hepsi geri gelir", () => {
+  assert.strictEqual(filterByCategory(sample, "Tümü").length, 4);
+});
+
+test("kategorisi olmayan eski kayıtlar 'Diğer' sayılır", () => {
+  assert.deepStrictEqual(filterByCategory(sample, "Diğer").map((s) => s.name), ["Eski kayıt"]);
+  assert.strictEqual(normalizeCategory(undefined), "Diğer");
+  assert.strictEqual(normalizeCategory("Bilinmeyen"), "Diğer");
+});
+
+test("olmayan kategoride sonuç boş döner", () => {
+  assert.deepStrictEqual(filterByCategory(sample, "Eğitim"), []);
+});
+
+test("eklenen abonelik seçilen kategoriyi taşır, seçilmezse 'Diğer' olur", () => {
+  const a = addSubscription([], { name: "X", price: "10", day: "5", category: "Yazılım" });
+  assert.strictEqual(a.list[0].category, "Yazılım");
+  const b = addSubscription([], { name: "Y", price: "10", day: "5" });
+  assert.strictEqual(b.list[0].category, "Diğer");
+});
+
+test("düzenlemede kategori değiştirilebilir, verilmezse korunur", () => {
+  const list = [{ id: "a", name: "A", price: 10, day: 1, category: "Müzik" }];
+  const changed = updateSubscription(list, "a", { name: "A", price: "10", day: "1", category: "Eğitim" });
+  assert.strictEqual(changed.list[0].category, "Eğitim");
+  const kept = updateSubscription(list, "a", { name: "A", price: "12", day: "1" });
+  assert.strictEqual(kept.list[0].category, "Müzik");
+});

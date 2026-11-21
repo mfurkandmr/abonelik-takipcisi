@@ -22,6 +22,15 @@
         <label>Yenilenme günü (1-31)
           <input name="day" type="number" min="1" max="31" placeholder="15">
         </label>
+        <label>Kategori
+          <select name="category">
+            <option>Eğlence</option>
+            <option>Müzik</option>
+            <option>Yazılım</option>
+            <option>Eğitim</option>
+            <option selected>Diğer</option>
+          </select>
+        </label>
         <div class="form-actions">
           <button type="submit" id="submit-btn">Ekle</button>
           <button type="button" id="cancel-edit" class="secondary" hidden>İptal</button>
@@ -39,6 +48,16 @@
 
     <section aria-labelledby="list-title">
       <h2 id="list-title">Aboneliklerim</h2>
+      <label class="filter">Kategori filtresi
+        <select id="category-filter">
+          <option>Tümü</option>
+          <option>Eğlence</option>
+          <option>Müzik</option>
+          <option>Yazılım</option>
+          <option>Eğitim</option>
+          <option>Diğer</option>
+        </select>
+      </label>
       <ul id="sub-list"></ul>
     </section>
   </main>

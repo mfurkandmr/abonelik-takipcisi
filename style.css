@@ -12,6 +12,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 li { padding: .5rem 0; border-bottom: 1px solid #e4e7eb; display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
 button.secondary { background: #e4e7eb; color: #1f2933; padding: .3rem .7rem; font-size: .85rem; }
 button.secondary:hover { background: #cbd2d9; }
+label.filter { margin-bottom: .75rem; max-width: 14rem; }
 .form-actions { display: flex; gap: .5rem; }
 .form-actions button { font-size: 1rem; padding: .55rem 1rem; }
 .actions { display: flex; gap: .4rem; }

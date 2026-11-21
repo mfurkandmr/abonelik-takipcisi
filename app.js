@@ -1,4 +1,11 @@
 const STORAGE_KEY = "abonelikler";
+const CATEGORIES = ["Eğlence", "Müzik", "Yazılım", "Eğitim", "Diğer"];
+const DEFAULT_CATEGORY = "Diğer";
+
+/** Bilinmeyen veya boş kategoriyi varsayılana çevirir (eski kayıtlarda kategori yoktur). */
+function normalizeCategory(category) {
+  return CATEGORIES.includes(category) ? category : DEFAULT_CATEGORY;
+}
 
 /** Form girdisini doğrular, hata mesajlarını dizi olarak döndürür. */
 function validateSubscription({ name, price, day }) {
@@ -28,7 +35,7 @@ function saveSubscriptions(storage, list) {
   storage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
-function addSubscription(list, { name, price, day }) {
+function addSubscription(list, { name, price, day, category }) {
   const errors = validateSubscription({ name, price, day });
   if (errors.length) return { list, errors };
   const item = {
@@ -36,19 +43,29 @@ function addSubscription(list, { name, price, day }) {
     name: String(name).trim(),
     price: Number(price),
     day: Number(day),
+    category: normalizeCategory(category),
   };
   return { list: [...list, item], errors: [] };
 }
 
 /** Mevcut aboneliği günceller. Geçersiz girdide ya da bilinmeyen kimlikte liste değişmez. */
-function updateSubscription(list, id, { name, price, day }) {
+function updateSubscription(list, id, { name, price, day, category }) {
   const errors = validateSubscription({ name, price, day });
   if (errors.length) return { list, errors };
   if (!list.some((s) => s.id === id)) return { list, errors: ["Düzenlenecek abonelik bulunamadı."] };
-  const updated = list.map((s) =>
-    s.id === id ? { ...s, name: String(name).trim(), price: Number(price), day: Number(day) } : s
-  );
+  const updated = list.map((s) => {
+    if (s.id !== id) return s;
+    const next = { ...s, name: String(name).trim(), price: Number(price), day: Number(day) };
+    if (category !== undefined) next.category = normalizeCategory(category);
+    return next;
+  });
   return { list: updated, errors: [] };
+}
+
+/** Seçilen kategoriye göre süzer. "Tümü" (veya boş) seçimde hepsini döndürür. */
+function filterByCategory(list, category) {
+  if (!category || category === "Tümü") return list;
+  return list.filter((s) => normalizeCategory(s.category) === category);
 }
 
 /** Verilen kimlikteki aboneliği listeden çıkarır. Bulunamazsa liste değişmez. */
@@ -112,6 +129,7 @@ if (typeof document !== "undefined") {
     form.elements.name.value = s.name;
     form.elements.price.value = s.price;
     form.elements.day.value = s.day;
+    form.elements.category.value = normalizeCategory(s.category);
     submitBtn.textContent = "Kaydet";
     cancelBtn.hidden = false;
     formTitle.textContent = "Aboneliği düzenle";
@@ -142,16 +160,28 @@ if (typeof document !== "undefined") {
     return li;
   }
 
+  const filterEl = document.getElementById("category-filter");
+  let activeFilter = "Tümü";
+  filterEl.addEventListener("change", () => {
+    activeFilter = filterEl.value;
+    renderList();
+  });
+
   function renderList() {
     listEl.replaceChildren();
     if (subscriptions.length === 0) {
       listEl.appendChild(emptyItem("Henüz abonelik eklenmedi."));
       return;
     }
-    for (const s of subscriptions) {
+    const visible = filterByCategory(subscriptions, activeFilter);
+    if (visible.length === 0) {
+      listEl.appendChild(emptyItem(`"${activeFilter}" kategorisinde abonelik yok.`));
+      return;
+    }
+    for (const s of visible) {
       const li = document.createElement("li");
       const text = document.createElement("span");
-      text.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü)`;
+      text.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü) · ${normalizeCategory(s.category)}`;
       const edit = document.createElement("button");
       edit.type = "button";
       edit.className = "secondary";
@@ -204,6 +234,7 @@ if (typeof document !== "undefined") {
       name: form.elements.name.value,
       price: form.elements.price.value,
       day: form.elements.day.value,
+      category: form.elements.category.value,
     };
     const result = editingId
       ? updateSubscription(subscriptions, editingId, data)
@@ -226,6 +257,6 @@ if (typeof module !== "undefined") {
   module.exports = {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
     monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
-    updateSubscription,
+    updateSubscription, filterByCategory, normalizeCategory, CATEGORIES,
   };
 }
