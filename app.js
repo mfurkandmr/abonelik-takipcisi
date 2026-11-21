@@ -40,6 +40,11 @@ function addSubscription(list, { name, price, day }) {
   return { list: [...list, item], errors: [] };
 }
 
+/** Verilen kimlikteki aboneliği listeden çıkarır. Bulunamazsa liste değişmez. */
+function removeSubscription(list, id) {
+  return list.filter((s) => s.id !== id);
+}
+
 /** Tutarı gösterim için biçimlendirir: tam sayıysa ondalıksız, değilse 2 haneli. */
 function formatTL(amount) {
   return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
@@ -104,7 +109,19 @@ if (typeof document !== "undefined") {
     }
     for (const s of subscriptions) {
       const li = document.createElement("li");
-      li.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü)`;
+      const text = document.createElement("span");
+      text.textContent = `${s.name} - ${s.price} TL (her ayın ${s.day}. günü)`;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "danger";
+      del.textContent = "Sil";
+      del.setAttribute("aria-label", `${s.name} aboneliğini sil`);
+      del.addEventListener("click", () => {
+        subscriptions = removeSubscription(subscriptions, s.id);
+        saveSubscriptions(localStorage, subscriptions);
+        render();
+      });
+      li.append(text, del);
       listEl.appendChild(li);
     }
   }
@@ -155,6 +172,6 @@ if (typeof document !== "undefined") {
 if (typeof module !== "undefined") {
   module.exports = {
     validateSubscription, addSubscription, loadSubscriptions, saveSubscriptions,
-    monthlyTotal, nextRenewal, upcomingPayments, formatTL,
+    monthlyTotal, nextRenewal, upcomingPayments, formatTL, removeSubscription,
   };
 }

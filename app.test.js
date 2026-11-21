@@ -101,3 +101,29 @@ test("ondalıklı toplam iki haneli gösterilir", () => {
   assert.strictEqual(formatTL(149.9), "149.90");
   assert.strictEqual(formatTL(150), "150");
 });
+
+// Kart 3: Abonelik silme
+const { removeSubscription } = require("./app.js");
+
+test("silinen abonelik listeden kalkar, diğerleri durur", () => {
+  const list = [{ id: "a", name: "A", price: 10, day: 1 }, { id: "b", name: "B", price: 20, day: 2 }];
+  const result = removeSubscription(list, "a");
+  assert.deepStrictEqual(result.map((s) => s.id), ["b"]);
+});
+
+test("silme sonrası toplam güncellenir", () => {
+  const list = [{ id: "a", price: 100 }, { id: "b", price: 50 }];
+  assert.strictEqual(monthlyTotal(removeSubscription(list, "a")), 50);
+});
+
+test("olmayan kimlik silinmek istenirse liste değişmez", () => {
+  const list = [{ id: "a", price: 10 }];
+  assert.strictEqual(removeSubscription(list, "yok").length, 1);
+});
+
+test("silme kalıcıdır: kaydedilip yeniden okununca silinen geri gelmez", () => {
+  const storage = fakeStorage();
+  const list = [{ id: "a", name: "A", price: 10, day: 1 }, { id: "b", name: "B", price: 20, day: 2 }];
+  saveSubscriptions(storage, removeSubscription(list, "a"));
+  assert.deepStrictEqual(loadSubscriptions(storage).map((s) => s.id), ["b"]);
+});
